@@ -331,6 +331,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .of-product p { color: #8f8a81; font-size: 12px; }
 .of-product-bottom { margin-top: 24px; padding-top: 17px; }
 .of-product-bottom strong { font-size: 15px; font-weight: 600; }
+.of-product-bottom .of-product-add { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border: 1px solid #d9d5cc; border-radius: 50%; background: #fffefa; color: #252420; transition: background .2s, border-color .2s, color .2s; }
+.of-product-bottom .of-product-add:hover:not(:disabled) { background: #252420; border-color: #252420; color: #fff; transform: none; }
+.of-product-bottom .of-product-add:disabled { color: #bdb9b0; cursor: not-allowed; }
+.of-product-bottom .of-product-add:focus-visible { outline: 2px solid #5e655b; outline-offset: 3px; }
 .of-product-stepper { display: grid; grid-template-columns: 34px minmax(28px, 1fr) 34px; align-items: center; width: 112px; min-height: 36px; border: 1px solid #d9d5cc; border-radius: 10px; background: #fffefa; overflow: hidden; }
 .of-product-stepper output { text-align: center; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .of-product-bottom .of-product-stepper button { width: 34px; height: 36px; border: 0; border-radius: 0; background: transparent; color: #252420; font-size: 20px; line-height: 1; transition: background .2s, color .2s; }
@@ -389,7 +393,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .of-product-info { padding: 16px 13px; }
   .of-product h3 { font-size: 15px; }
   .of-product p { font-size: 10px; }
-  .of-product-bottom { align-items: stretch; flex-direction: column; gap: 10px; }
+  .of-product-bottom.has-quantity { align-items: stretch; flex-direction: column; gap: 10px; }
   .of-product-bottom strong { font-size: 11px; }
   .of-product-stepper { width: 100%; }
   .of-guest { padding: 16px 20px 32px; }

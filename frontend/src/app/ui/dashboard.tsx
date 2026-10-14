@@ -353,11 +353,13 @@ export default function Dashboard() {
                   <div className="of-product-info">
                     <div className="of-product-kicker"><span>{product.sku}</span><span className={product.available_stock <= 5 ? "is-low" : ""}>{product.available_stock > 0 ? (product.available_stock <= 5 ? `Only ${product.available_stock} left` : "In stock") : "Sold out"}</span></div>
                     <h3>{product.name}</h3><p>{product.description ?? "Built for everyday work."}</p>
-                    <div className="of-product-bottom"><strong>{money(product.price, product.currency)}</strong><div className="of-product-stepper" role="group" aria-label={`${product.name} quantity`}>
-                      <button type="button" disabled={quantity === 0} onClick={() => changeQuantity(product, -1)} aria-label={`Remove one ${product.name}`}>−</button>
-                      <output aria-live="polite" aria-label={`${product.name} in order`}>{quantity}</output>
-                      <button type="button" disabled={quantity >= product.available_stock} onClick={() => changeQuantity(product, 1)} aria-label={`Add one ${product.name}`}>+</button>
-                    </div></div>
+                    <div className={`of-product-bottom${quantity > 0 ? " has-quantity" : ""}`}><strong>{money(product.price, product.currency)}</strong>{quantity === 0 ?
+                      <button type="button" className="of-product-add" disabled={product.available_stock < 1} onClick={() => changeQuantity(product, 1)} aria-label={`Add ${product.name} to order`}><Icon name="plus"/></button> :
+                      <div className="of-product-stepper" role="group" aria-label={`${product.name} quantity`}>
+                        <button type="button" onClick={() => changeQuantity(product, -1)} aria-label={`Remove one ${product.name}`}>−</button>
+                        <output aria-live="polite" aria-label={`${product.name} in order`}>{quantity}</output>
+                        <button type="button" disabled={quantity >= product.available_stock} onClick={() => changeQuantity(product, 1)} aria-label={`Add one ${product.name}`}>+</button>
+                      </div>}</div>
                   </div>
                 </article>;
               })}</div>}

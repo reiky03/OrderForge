@@ -10,13 +10,13 @@
 
 ![OrderForge demo sign-in with customer and admin profiles](docs/screenshots/guest-premium-sign-in.jpg)
 
-**2. Build an order.** Search, filter, and sort the catalog. Each product card shows its stock and a visible `− 0 +` quantity control; the plus button stops at available stock. The bag shows your selected items and subtotal before checkout.
+**2. Build an order.** Search, filter, and sort the catalog. Each product starts with a round **+** button. Press it once to add one item and reveal the `− 1 +` quantity control. Reducing the quantity to zero restores the round button; the plus button stops at available stock. The bag shows your selected items and subtotal before checkout.
 
 ![Customer catalog with searchable product cards and stock labels](docs/screenshots/customer-shop-premium.jpg)
 
-Current quantity control, shown from a product card on mobile:
+Quantity control after adding an item, shown from a product card on mobile:
 
-<img src="docs/screenshots/product-quantity-stepper.jpg" alt="Price and minus, quantity, plus controls visible before adding a product" width="296">
+<img src="docs/screenshots/product-quantity-stepper.jpg" alt="Price and minus, one item, plus controls after adding a product" width="296">
 
 **3. Complete the mock payment.** Checkout reserves stock and creates a pending payment. In **My orders**, open the order and simulate success, failure, or timeout. A successful payment changes the order to `PAID` and consumes its reservation once.
 
@@ -32,7 +32,7 @@ Current quantity control, shown from a product card on mobile:
   </tr>
 </table>
 
-**5. Use it on a phone.** The catalog adapts to a narrow screen, including full-width quantity controls in each product card.
+**5. Use it on a phone.** The catalog adapts to a narrow screen. The round add button changes to a full-width quantity control after the first tap.
 
 <img src="docs/screenshots/customer-mobile-premium.jpg" alt="OrderForge customer catalog on a phone" width="300">
 
