@@ -1,0 +1,507 @@
+openapi: 3.1.0
+info:
+  title: OrderForge API
+  version: 1.0.0
+  description: Local portfolio API. Monetary values are decimal strings in IDR.
+servers:
+  - url: http://127.0.0.1:8000/api/v1
+tags:
+  - name: Auth
+  - name: Catalog
+  - name: Orders
+  - name: Payments
+  - name: Admin
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, password_confirmation]
+              properties:
+                name: {type: string, maxLength: 255}
+                email: {type: string, format: email}
+                password: {type: string, minLength: 8}
+                password_confirmation: {type: string}
+      responses:
+        '201': {description: Created, content: {application/json: {schema: {$ref: '#/components/schemas/AuthEnvelope'}}}}
+        '422': {$ref: '#/components/responses/ValidationError'}
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Get a Sanctum bearer token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: {type: string, format: email, example: customer1@orderforge.test}
+                password: {type: string, example: OrderForgeLocal2026!}
+      responses:
+        '200': {description: Authenticated, content: {application/json: {schema: {$ref: '#/components/schemas/AuthEnvelope'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Current user
+      security: [{bearerAuth: []}]
+      responses:
+        '200': {description: User, content: {application/json: {schema: {$ref: '#/components/schemas/UserEnvelope'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke current token
+      security: [{bearerAuth: []}]
+      responses:
+        '200': {description: Logged out}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /broadcasting/auth:
+    post:
+      tags: [Auth]
+      summary: Authorize a private order WebSocket channel
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [socket_id, channel_name]
+              properties:
+                socket_id: {type: string, example: '1234.5678'}
+                channel_name: {type: string, example: private-orders.42}
+      responses:
+        '200': {description: Reverb/Pusher channel auth signature, content: {application/json: {schema: {type: object, properties: {auth: {type: string}}}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /products:
+    get:
+      tags: [Catalog]
+      summary: Active products and available stock
+      parameters:
+        - {name: search, in: query, schema: {type: string, maxLength: 80}}
+        - {$ref: '#/components/parameters/Page'}
+        - {$ref: '#/components/parameters/PerPage'}
+      responses:
+        '200': {description: Paginated products, content: {application/json: {schema: {$ref: '#/components/schemas/ProductListEnvelope'}}}}
+        '422': {$ref: '#/components/responses/ValidationError'}
+  /products/{id}:
+    get:
+      tags: [Catalog]
+      summary: Product details
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {description: Product, content: {application/json: {schema: {$ref: '#/components/schemas/ProductEnvelope'}}}}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /orders:
+    get:
+      tags: [Orders]
+      summary: Own orders
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/PerPage'}]
+      responses:
+        '200': {description: Paginated own orders, content: {application/json: {schema: {$ref: '#/components/schemas/OrderListEnvelope'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+    post:
+      tags: [Orders]
+      summary: Reserve stock and create an order atomically
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/IdempotencyKey'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [items]
+              properties:
+                items:
+                  type: array
+                  minItems: 1
+                  maxItems: 50
+                  items:
+                    type: object
+                    required: [product_id, quantity]
+                    properties:
+                      product_id: {type: integer, minimum: 1}
+                      quantity: {type: integer, minimum: 1, maximum: 100}
+            example: {items: [{product_id: 1, quantity: 1}]}
+      responses:
+        '201': {description: Reserved; Idempotent-Replayed response header is true on replay, headers: {Idempotent-Replayed: {schema: {type: string, enum: ['true', 'false']}}}, content: {application/json: {schema: {$ref: '#/components/schemas/OrderEnvelope'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+  /orders/{id}:
+    get:
+      tags: [Orders]
+      summary: Own order details
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {description: Order, content: {application/json: {schema: {$ref: '#/components/schemas/OrderEnvelope'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /orders/{id}/cancel:
+    post:
+      tags: [Orders]
+      summary: Cancel a pending order and release reservations
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {description: Cancelled, content: {application/json: {schema: {$ref: '#/components/schemas/OrderEnvelope'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /orders/{id}/payments:
+    post:
+      tags: [Payments]
+      summary: Create the pending mock payment for an order
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/Id'}, {$ref: '#/components/parameters/IdempotencyKey'}]
+      responses:
+        '201': {description: Payment created; Idempotent-Replayed response header is true on replay, content: {application/json: {schema: {$ref: '#/components/schemas/PaymentEnvelope'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+  /payments/{id}/mock-success:
+    post:
+      tags: [Payments]
+      summary: Simulate signed successful webhook (local/testing only)
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody: {$ref: '#/components/requestBodies/MockDelivery'}
+      responses:
+        '200': {$ref: '#/components/responses/MockDelivery'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /payments/{id}/mock-failure:
+    post:
+      tags: [Payments]
+      summary: Simulate signed failed webhook (local/testing only)
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody: {$ref: '#/components/requestBodies/MockDelivery'}
+      responses:
+        '200': {$ref: '#/components/responses/MockDelivery'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /payments/{id}/mock-timeout:
+    post:
+      tags: [Payments]
+      summary: Simulate provider timeout without changing payment or stock (local/testing only)
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody: {$ref: '#/components/requestBodies/MockDelivery'}
+      responses:
+        '504': {description: MOCK_PROVIDER_TIMEOUT; payment remains pending, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorEnvelope'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /payments/webhook/mock:
+    post:
+      tags: [Payments]
+      summary: Raw signed mock provider callback
+      description: HMAC-SHA256 signature covers timestamp, a dot, and the raw JSON body using WEBHOOK_SECRET. Event ID deduplicates deliveries.
+      parameters:
+        - {name: X-Webhook-Timestamp, in: header, required: true, schema: {type: string, example: '1791964800'}}
+        - {name: X-Webhook-Signature, in: header, required: true, schema: {type: string, description: Lowercase hex HMAC-SHA256}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event_id, type, payment_reference, amount, currency]
+              properties:
+                event_id: {type: string, format: uuid}
+                payment_reference: {type: string}
+                type: {type: string, enum: [payment.succeeded, payment.failed]}
+                amount: {type: string, example: '899000.00'}
+                currency: {type: string, example: IDR}
+      responses:
+        '200': {description: Applied or duplicate delivery}
+        '401': {description: Invalid signature, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorEnvelope'}}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /admin/inventory:
+    get:
+      tags: [Admin]
+      summary: List stock by product and warehouse
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/PerPage'}]
+      responses:
+        '200': {description: Inventory rows, content: {application/json: {schema: {$ref: '#/components/schemas/InventoryListEnvelope'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /admin/inventory/{id}:
+    get:
+      tags: [Admin]
+      summary: Inventory details
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {description: Inventory row, content: {application/json: {schema: {$ref: '#/components/schemas/InventoryEnvelope'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /admin/inventory/{id}/adjustments:
+    post:
+      tags: [Admin]
+      summary: Adjust stock with an immutable movement
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, quantity, reason]
+              properties:
+                type: {type: string, enum: [INCREASE, DECREASE, CORRECTION]}
+                quantity: {type: integer, minimum: 1, description: New on-hand count for CORRECTION}
+                reason: {type: string}
+            example: {type: INCREASE, quantity: 10, reason: Warehouse restock}
+      responses:
+        '200': {description: Updated inventory, content: {application/json: {schema: {$ref: '#/components/schemas/InventoryEnvelope'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {$ref: '#/components/responses/ValidationError'}
+  /admin/orders:
+    get:
+      tags: [Admin]
+      summary: List all orders, optionally filtered by status
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/Status'}, {$ref: '#/components/parameters/PerPage'}]
+      responses:
+        '200': {description: Paginated orders, content: {application/json: {schema: {$ref: '#/components/schemas/OrderListEnvelope'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /admin/payments:
+    get:
+      tags: [Admin]
+      summary: List all payments
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/Status'}, {$ref: '#/components/parameters/PerPage'}]
+      responses:
+        '200': {description: Paginated payments, content: {application/json: {schema: {$ref: '#/components/schemas/PaymentListEnvelope'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /admin/outbox:
+    get:
+      tags: [Admin]
+      summary: Outbox delivery status and errors
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/PerPage'}]
+      responses:
+        '200': {description: Paginated outbox rows, content: {application/json: {schema: {$ref: '#/components/schemas/OutboxListEnvelope'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /admin/dead-letters:
+    get:
+      tags: [Admin]
+      summary: Dead letters and failure reasons
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/PerPage'}]
+      responses:
+        '200': {description: Paginated dead letters, content: {application/json: {schema: {$ref: '#/components/schemas/DeadLetterListEnvelope'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /admin/dead-letters/{id}/retry:
+    post:
+      tags: [Admin]
+      summary: Retry an open dead letter
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/Id'}]
+      responses:
+        '200': {description: Retried event, content: {application/json: {schema: {type: object, properties: {data: {type: object, properties: {id: {type: integer}, event_id: {type: string, format: uuid}, status: {type: string}, retried_at: {type: string, format: date-time}}}, request_id: {type: string}}}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /admin/failed-jobs:
+    get:
+      tags: [Admin]
+      summary: Failed Laravel queue jobs
+      security: [{bearerAuth: []}]
+      parameters: [{$ref: '#/components/parameters/PerPage'}]
+      responses:
+        '200': {description: Paginated failed jobs, content: {application/json: {schema: {$ref: '#/components/schemas/FailedJobListEnvelope'}}}}
+        '403': {$ref: '#/components/responses/Forbidden'}
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: Sanctum}
+  parameters:
+    Id: {name: id, in: path, required: true, schema: {type: integer, minimum: 1}}
+    Page: {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+    PerPage: {name: per_page, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+    Status: {name: status, in: query, schema: {type: string}}
+    IdempotencyKey: {name: Idempotency-Key, in: header, required: true, schema: {type: string, format: uuid}, example: 8fd7dc3f-1fe9-4e10-9d79-e4e2d370be3f}
+  requestBodies:
+    MockDelivery:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              duplicate_deliveries: {type: integer, minimum: 1, maximum: 5, default: 1}
+              delay_seconds: {type: integer, minimum: 0, maximum: 10, default: 0}
+          example: {duplicate_deliveries: 5}
+  responses:
+    Unauthorized: {description: Missing or invalid authentication, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorEnvelope'}}}}
+    Forbidden: {description: Insufficient permissions or wrong owner, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorEnvelope'}}}}
+    NotFound: {description: Resource not found, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorEnvelope'}}}}
+    Conflict: {description: INSUFFICIENT_STOCK, IDEMPOTENCY_CONFLICT, or INVALID_ORDER_STATE, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorEnvelope'}}}}
+    ValidationError: {description: Invalid fields, content: {application/json: {schema: {$ref: '#/components/schemas/ErrorEnvelope'}}}}
+    MockDelivery: {description: Payment and webhook delivery count, content: {application/json: {schema: {$ref: '#/components/schemas/MockDeliveryEnvelope'}}}}
+  schemas:
+    User:
+      type: object
+      required: [id, name, email, role]
+      properties:
+        id: {type: integer}
+        name: {type: string}
+        email: {type: string, format: email}
+        role: {type: string, enum: [ADMIN, CUSTOMER]}
+    Product:
+      type: object
+      required: [id, sku, name, price, currency, available_stock, status]
+      properties:
+        id: {type: integer}
+        sku: {type: string}
+        name: {type: string}
+        description: {type: [string, 'null']}
+        price: {type: string, example: '899000.00'}
+        currency: {type: string, example: IDR}
+        available_stock: {type: integer}
+        status: {type: string}
+    Payment:
+      type: object
+      required: [id, order_id, payment_reference, provider, amount, currency, status]
+      properties:
+        id: {type: integer}
+        order_id: {type: integer}
+        payment_reference: {type: string}
+        provider: {type: string, example: mock}
+        amount: {type: string}
+        currency: {type: string}
+        status: {type: string, enum: [PENDING, PROCESSING, SUCCEEDED, FAILED, EXPIRED, REFUNDED]}
+        paid_at: {type: [string, 'null'], format: date-time}
+        failed_at: {type: [string, 'null'], format: date-time}
+    Order:
+      type: object
+      required: [id, order_number, status, subtotal, total, currency, items]
+      properties:
+        id: {type: integer}
+        order_number: {type: string}
+        status: {type: string, enum: [PENDING_PAYMENT, PAID, CANCELLED, EXPIRED]}
+        subtotal: {type: string}
+        total: {type: string}
+        currency: {type: string}
+        expires_at: {type: [string, 'null'], format: date-time}
+        paid_at: {type: [string, 'null'], format: date-time}
+        cancelled_at: {type: [string, 'null'], format: date-time}
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              product_id: {type: integer}
+              sku: {type: string}
+              name: {type: string}
+              unit_price: {type: string}
+              quantity: {type: integer}
+              subtotal: {type: string}
+        payment: {oneOf: [{$ref: '#/components/schemas/Payment'}, {type: 'null'}]}
+        created_at: {type: [string, 'null'], format: date-time}
+    ErrorEnvelope:
+      type: object
+      required: [error, request_id]
+      properties:
+        error:
+          type: object
+          required: [code, message, details]
+          properties:
+            code: {type: string, example: INSUFFICIENT_STOCK}
+            message: {type: string}
+            details: {type: object, additionalProperties: true}
+        request_id: {type: string}
+      example: {error: {code: INSUFFICIENT_STOCK, message: Insufficient stock for one or more items., details: {}}, request_id: 7b07a85e-4295-45da-a4f1-b98926ad701f}
+    AuthEnvelope:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            token: {type: string}
+            user: {$ref: '#/components/schemas/User'}
+        meta: {type: object}
+        request_id: {type: string}
+    UserEnvelope: {type: object, properties: {data: {$ref: '#/components/schemas/User'}, request_id: {type: string}}}
+    ProductEnvelope: {type: object, properties: {data: {$ref: '#/components/schemas/Product'}, request_id: {type: string}}}
+    ProductListEnvelope: {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/Product'}}, meta: {type: object}, request_id: {type: string}}}
+    OrderEnvelope: {type: object, properties: {data: {$ref: '#/components/schemas/Order'}, request_id: {type: string}}}
+    OrderListEnvelope: {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/Order'}}, meta: {type: object}, request_id: {type: string}}}
+    PaymentEnvelope: {type: object, properties: {data: {$ref: '#/components/schemas/Payment'}, request_id: {type: string}}}
+    Inventory:
+      type: object
+      required: [id, product, warehouse, on_hand, reserved, available, version]
+      properties:
+        id: {type: integer}
+        product: {type: object, properties: {id: {type: integer}, sku: {type: string}, name: {type: string}}}
+        warehouse: {type: object, properties: {id: {type: integer}, code: {type: string}, name: {type: string}}}
+        on_hand: {type: integer}
+        reserved: {type: integer}
+        available: {type: integer}
+        version: {type: integer}
+    OutboxEvent:
+      type: object
+      properties:
+        id: {type: integer}
+        event_id: {type: string, format: uuid}
+        event_type: {type: string}
+        aggregate_type: {type: string}
+        aggregate_id: {type: string}
+        payload: {type: object, additionalProperties: true}
+        status: {type: string, enum: [PENDING, PROCESSING, PUBLISHED, FAILED]}
+        attempts: {type: integer}
+        available_at: {type: string, format: date-time}
+        published_at: {type: [string, 'null'], format: date-time}
+        last_error: {type: [string, 'null']}
+    DeadLetter:
+      type: object
+      properties:
+        id: {type: integer}
+        event_id: {type: string, format: uuid}
+        event_type: {type: string}
+        payload: {type: object, additionalProperties: true}
+        attempts: {type: integer}
+        failure_reason: {type: string}
+        status: {type: string, enum: [OPEN, RETRYING, RETRIED]}
+        failed_at: {type: string, format: date-time}
+        retried_at: {type: [string, 'null'], format: date-time}
+    FailedJob:
+      type: object
+      properties:
+        id: {type: integer}
+        uuid: {type: string}
+        queue: {type: string}
+        failed_at: {type: string, format: date-time}
+        summary: {type: string}
+    InventoryEnvelope: {type: object, properties: {data: {$ref: '#/components/schemas/Inventory'}, request_id: {type: string}}}
+    InventoryListEnvelope: {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/Inventory'}}, meta: {type: object}, request_id: {type: string}}}
+    PaymentListEnvelope: {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/Payment'}}, meta: {type: object}, request_id: {type: string}}}
+    OutboxListEnvelope: {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/OutboxEvent'}}, meta: {type: object}, request_id: {type: string}}}
+    DeadLetterListEnvelope: {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/DeadLetter'}}, meta: {type: object}, request_id: {type: string}}}
+    FailedJobListEnvelope: {type: object, properties: {data: {type: array, items: {$ref: '#/components/schemas/FailedJob'}}, meta: {type: object}, request_id: {type: string}}}
+    MockDeliveryEnvelope:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            payment: {$ref: '#/components/schemas/Payment'}
+            webhook:
+              type: object
+              properties:
+                event_id: {type: string, format: uuid}
+                deliveries: {type: integer}
+                duplicates: {type: integer}
+        request_id: {type: string}

@@ -1,0 +1,29 @@
+FROM node:22-alpine AS deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+
+FROM deps AS builder
+WORKDIR /app
+COPY . .
+ARG NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1
+ARG NEXT_PUBLIC_REVERB_APP_KEY=orderforge-local-key
+ARG NEXT_PUBLIC_REVERB_HOST=127.0.0.1
+ARG NEXT_PUBLIC_REVERB_PORT=8085
+ARG NEXT_PUBLIC_REVERB_SCHEME=http
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_REVERB_APP_KEY=$NEXT_PUBLIC_REVERB_APP_KEY
+ENV NEXT_PUBLIC_REVERB_HOST=$NEXT_PUBLIC_REVERB_HOST
+ENV NEXT_PUBLIC_REVERB_PORT=$NEXT_PUBLIC_REVERB_PORT
+ENV NEXT_PUBLIC_REVERB_SCHEME=$NEXT_PUBLIC_REVERB_SCHEME
+ENV NODE_OPTIONS=--max-old-space-size=1024
+RUN npm run build
+
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+EXPOSE 3000
+CMD ["node", "server.js"]

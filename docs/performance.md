@@ -1,0 +1,7 @@
+# Performance and concurrency evidence
+
+The local HTTP race ran 20 simultaneous checkouts against `OF-KB-001`, which had one available unit. Result: **1 order created, 19 `INSUFFICIENT_STOCK`, 0 unexpected responses**. The successful pending order was cancelled and stock returned to one. Run `python3 scripts/concurrency_demo.py` to reproduce this with real PostgreSQL locking. This is a correctness exercise rather than a throughput benchmark; the result depends on the seeded one-unit setup.
+
+The inventory lock query was inspected with `EXPLAIN (ANALYZE, BUFFERS)` against the seeded database. The plan used `products_sku_unique` to find the product and `inventories_product_id_warehouse_id_unique` to find its two warehouse rows, then `LockRows` for `FOR UPDATE OF i`. Observed execution time was **3.839 ms** and planning time **24.681 ms** on the local Docker stack during this run. The dataset is small; these figures are evidence of index use, not a production latency promise. The exact reproducible command is in [demo.md](demo.md).
+
+The purchase smoke check sent the same signed success webhook five times. The order ended `PAID`, the payment `SUCCEEDED`, and the response counted four duplicate deliveries. Database inspection found **one** `SALE` movement and **one** webhook row for that provider event. The expiry smoke check moved a pending order past its deadline; the scheduler marked it `EXPIRED`, released its reservation, and left inventory with zero reserved units.

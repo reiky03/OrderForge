@@ -1,0 +1,10 @@
+.env
+.git
+node_modules
+vendor
+tests
+database/*.sqlite
+.agents
+.claude
+AGENTS.md
+CLAUDE.md
