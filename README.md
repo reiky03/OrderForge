@@ -56,7 +56,7 @@ The idempotent local seed creates 20 products and Jakarta/Surabaya warehouses. `
 
 For expiration, create an unpaid order, wait past the default 15-minute window, then run `docker compose exec app php artisan orders:expire`. For broker recovery, stop only RabbitMQ, create an order, inspect the pending outbox row, restart it, then run `docker compose exec app php artisan outbox:publish` and `docker compose exec app php artisan events:consume --once`. See [docs/demo.md](docs/demo.md) for commands and capture points.
 
-Portfolio captures: [customer paid order](docs/screenshots/customer-paid-order.jpg), [admin overview](docs/screenshots/admin-overview.jpg), and [event pipeline](docs/screenshots/admin-event-pipeline.jpg).
+Portfolio captures: [sign-in](docs/screenshots/guest-sign-in.jpg), [customer shop](docs/screenshots/customer-shop.jpg), [paid order](docs/screenshots/customer-paid-order.jpg), [admin overview](docs/screenshots/admin-overview.jpg), and [event pipeline](docs/screenshots/admin-event-pipeline.jpg).
 
 ## Model and invariants
 
