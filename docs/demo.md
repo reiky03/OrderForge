@@ -8,7 +8,7 @@ docker compose exec app php artisan db:seed --force
 curl -i http://127.0.0.1:8000/health/ready
 ```
 
-Open http://localhost:3000. Sign in with `customer1@orderforge.test` and `OrderForgeLocal2026!`. Select a product other than the one-unit keyboard, create an order, create payment, then simulate success with five duplicate deliveries. Point out the `PAID` order, `SUCCEEDED` payment, stock ledger movement, and immediate order update from Reverb. The request ID in the response can be searched in `docker compose logs app`.
+Open http://localhost:3000. Sign in with `customer1@orderforge.test` and `OrderForgeLocal2026!`. Select a product other than the one-unit keyboard and check out; the UI creates the order and pending mock payment together. In **Orders**, simulate success (the UI sends three duplicate deliveries). Point out the `PAID` order, `SUCCEEDED` payment, stock ledger movement, and immediate order update from Reverb. The request ID in the response can be searched in `docker compose logs app`.
 
 Sign in as `admin@orderforge.test` to show warehouse balances, outbox delivery attempts, payment rows, dead letters, and failed queue jobs. Capture portfolio screenshots from the customer order and admin operation tabs, plus `/health/ready` and `/metrics`. Remove tokens, passwords, and private customer details from public screenshots.
 
