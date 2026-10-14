@@ -104,7 +104,12 @@ class PaymentFlowTest extends TestCase
 
     public function test_private_order_channel_is_authorized_only_for_owner_or_admin(): void
     {
-        config(['broadcasting.default' => 'reverb']);
+        config([
+            'broadcasting.default' => 'reverb',
+            'broadcasting.connections.reverb.key' => 'test-key',
+            'broadcasting.connections.reverb.secret' => 'test-secret',
+            'broadcasting.connections.reverb.app_id' => 'test-app',
+        ]);
         require base_path('routes/channels.php');
         [$owner, $order] = $this->pendingOrder();
         $payload = ['socket_id' => '1234.5678', 'channel_name' => 'private-orders.'.$order->id];
