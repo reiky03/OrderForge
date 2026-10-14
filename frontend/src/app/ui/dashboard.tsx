@@ -203,10 +203,6 @@ export default function Dashboard() {
     localStorage.removeItem("orderforge-session"); setToken(""); setUser(null); setOrders([]); setTab("overview");
   }
 
-  function addToCart(product: Product) {
-    setCart((current) => ({ ...current, [product.id]: Math.min((current[product.id] ?? 0) + 1, product.available_stock) }));
-  }
-
   function changeQuantity(product: Product, amount: number) {
     setCart((current) => {
       const next = { ...current };
@@ -350,7 +346,21 @@ export default function Dashboard() {
             <section className="of-customer-hero"><div className="of-customer-hero-copy"><span className="of-overline">THE EVERYDAY EDIT / 2026</span><h2>Considered tools<br/>for <em>better work.</em></h2><p>An edit of everyday essentials, chosen for the way you work.</p><button type="button" className="of-text-action" onClick={() => document.getElementById("catalog")?.scrollIntoView({ behavior: "smooth" })}>Explore collection <Icon name="arrow-right"/></button></div><span className="of-hero-photo-credit">THE ORDERFORGE COLLECTION — 01</span></section>
             <div className="of-stats-strip"><Metric label="Available products" value={String(products.length)} detail="Curated essentials"/><Metric label="Active orders" value={String(orders.filter((order) => order.status === "PENDING_PAYMENT").length)} detail="Awaiting payment"/><Metric label="Completed" value={String(orders.filter((order) => order.status === "PAID").length)} detail="Orders paid"/></div>
             <section id="catalog" className="of-catalog"><div className="of-section-head"><div><span className="of-overline">SHOP THE COLLECTION</span><h2>Explore essentials<span className="of-heading-count">{filteredProducts.length.toString().padStart(2, "0")}</span></h2></div><button type="button" className="of-subtle-button" onClick={() => void refreshProducts()}><Icon name="refresh"/> Refresh stock</button></div><div className="of-catalog-tools"><div className="of-filters" aria-label="Catalog filters">{[["all", "All products"], ["available", "In stock"], ["limited", "Limited stock"]].map(([key, title]) => <button type="button" key={key} className={catalogFilter === key ? "is-active" : ""} onClick={() => setCatalogFilter(key as typeof catalogFilter)}>{title}</button>)}</div><div className="of-catalog-controls"><label className="of-search"><Icon name="search"/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search products" aria-label="Search products"/>{search && <button type="button" onClick={() => setSearch("")} aria-label="Clear search">×</button>}</label><select value={sortBy} onChange={(event) => setSortBy(event.target.value as typeof sortBy)} aria-label="Sort products"><option value="name">Name A–Z</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option></select></div></div>
-              {filteredProducts.length === 0 ? <Empty title="Nothing in this view" detail="Try another filter or search term."/> : <div className="of-product-grid">{filteredProducts.map((product, index) => <article key={product.id} className="of-product"><div className={`of-product-art art-${index % 4}`}><span className="of-product-index">{String(index + 1).padStart(2, "0")} / 20</span><ProductGlyph sku={product.sku}/><span className="of-product-corner">↗</span></div><div className="of-product-info"><div className="of-product-kicker"><span>{product.sku}</span><span className={product.available_stock <= 5 ? "is-low" : ""}>{product.available_stock > 0 ? (product.available_stock <= 5 ? `Only ${product.available_stock} left` : "In stock") : "Sold out"}</span></div><h3>{product.name}</h3><p>{product.description ?? "Built for everyday work."}</p><div className="of-product-bottom"><strong>{money(product.price, product.currency)}</strong><button type="button" disabled={product.available_stock < 1} onClick={() => addToCart(product)} aria-label={`Add ${product.name} to order`}>{(cart[product.id] ?? 0) > 0 ? <span className="of-added-count">{cart[product.id]}</span> : <Icon name="plus"/>}</button></div></div></article>)}</div>}
+              {filteredProducts.length === 0 ? <Empty title="Nothing in this view" detail="Try another filter or search term."/> : <div className="of-product-grid">{filteredProducts.map((product, index) => {
+                const quantity = cart[product.id] ?? 0;
+                return <article key={product.id} className="of-product">
+                  <div className={`of-product-art art-${index % 4}`}><span className="of-product-index">{String(index + 1).padStart(2, "0")} / 20</span><ProductGlyph sku={product.sku}/><span className="of-product-corner">↗</span></div>
+                  <div className="of-product-info">
+                    <div className="of-product-kicker"><span>{product.sku}</span><span className={product.available_stock <= 5 ? "is-low" : ""}>{product.available_stock > 0 ? (product.available_stock <= 5 ? `Only ${product.available_stock} left` : "In stock") : "Sold out"}</span></div>
+                    <h3>{product.name}</h3><p>{product.description ?? "Built for everyday work."}</p>
+                    <div className="of-product-bottom"><strong>{money(product.price, product.currency)}</strong><div className="of-product-stepper" role="group" aria-label={`${product.name} quantity`}>
+                      <button type="button" disabled={quantity === 0} onClick={() => changeQuantity(product, -1)} aria-label={`Remove one ${product.name}`}>−</button>
+                      <output aria-live="polite" aria-label={`${product.name} in order`}>{quantity}</output>
+                      <button type="button" disabled={quantity >= product.available_stock} onClick={() => changeQuantity(product, 1)} aria-label={`Add one ${product.name}`}>+</button>
+                    </div></div>
+                  </div>
+                </article>;
+              })}</div>}
             </section>
             {cartCount > 0 && <button type="button" className="of-cart-bar" onClick={() => setCartOpen(true)}><span className="of-cart-bar-icon"><Icon name="bag"/></span><span><small>{cartCount} item{cartCount === 1 ? "" : "s"} in your order</small><strong>{money(cartTotal)}</strong></span><span className="of-cart-bar-cta">Review order <Icon name="arrow-right"/></span></button>}
           </>)}

@@ -4,21 +4,43 @@
 
 ![OrderForge customer dashboard](docs/screenshots/customer-premium-hero.jpg)
 
+## Explore the demo
+
+**1. Enter the workspace.** Choose the Customer or Admin demo profile on the sign-in screen. Both lead to role-specific views.
+
+![OrderForge demo sign-in with customer and admin profiles](docs/screenshots/guest-premium-sign-in.jpg)
+
+**2. Build an order.** Search, filter, and sort the catalog. Each product card shows its stock and a visible `− 0 +` quantity control; the plus button stops at available stock. The bag shows your selected items and subtotal before checkout.
+
+![Customer catalog with searchable product cards and stock labels](docs/screenshots/customer-shop-premium.jpg)
+
+Current quantity control, shown from a product card on mobile:
+
+<img src="docs/screenshots/product-quantity-stepper.jpg" alt="Price and minus, quantity, plus controls visible before adding a product" width="296">
+
+**3. Complete the mock payment.** Checkout reserves stock and creates a pending payment. In **My orders**, open the order and simulate success, failure, or timeout. A successful payment changes the order to `PAID` and consumes its reservation once.
+
+![Customer order history with paid order and successful payment](docs/screenshots/customer-paid-order.jpg)
+
+**4. Monitor operations.** The admin overview summarizes order status and available stock. The event pipeline shows published outbox events, dead letters requiring review, and failed queue jobs.
+
 <table>
-  <tr><th>Customer catalog</th><th>Admin overview</th></tr>
+  <tr><th>Admin overview</th><th>Event delivery and recovery</th></tr>
   <tr>
-    <td><img src="docs/screenshots/customer-shop-premium.jpg" alt="Searchable product catalog with rounded cards" width="680"></td>
     <td><img src="docs/screenshots/admin-premium-overview.jpg" alt="Admin dashboard with order and inventory metrics" width="680"></td>
+    <td><img src="docs/screenshots/admin-event-pipeline.jpg" alt="Transactional outbox and dead-letter queue" width="680"></td>
   </tr>
 </table>
 
-More previews: [sign-in](docs/screenshots/guest-premium-sign-in.jpg) · [mobile catalog](docs/screenshots/customer-mobile-premium.jpg)
+**5. Use it on a phone.** The catalog adapts to a narrow screen, including full-width quantity controls in each product card.
+
+<img src="docs/screenshots/customer-mobile-premium.jpg" alt="OrderForge customer catalog on a phone" width="300">
 
 ## What is inside?
 
 | Area | What you can do |
 | --- | --- |
-| Customer storefront | Search, filter, and sort 20 seeded products; add items to a bag; check out; inspect orders; simulate payment success, failure, or timeout; cancel an unpaid order. |
+| Customer storefront | Search, filter, and sort 20 seeded products; change quantities directly on each card; review the bag; check out; inspect orders; simulate payment success, failure, or timeout; cancel an unpaid order. |
 | Admin workspace | Review orders and payments, inspect two warehouses, record stock adjustments, watch the transactional outbox, and retry dead-letter events. |
 | Reliability layer | Reserve stock inside PostgreSQL transactions, reject overselling, replay duplicate requests safely, deduplicate webhooks, publish events through RabbitMQ, and recover expired reservations. |
 | Operations | Health and readiness endpoints, Prometheus metrics, structured request logs, queue worker, scheduler, and live updates via Reverb. |
